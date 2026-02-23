@@ -13,6 +13,8 @@
   --space-8: 32px;
   --space-12: 48px;
   --space-16: 64px;
+  --brand-primary: rgb(255, 71, 19);
+  --brand-dark-80: rgba(17, 24, 28, 0.8);
 }
 
 * {
@@ -25,10 +27,11 @@ body {
   font-family: 'Nunito', sans-serif;
   color: #0f172a;
   background:
-    radial-gradient(circle at 8% 20%, rgba(251, 113, 133, 0.18), transparent 34%),
-    radial-gradient(circle at 92% 12%, rgba(45, 212, 191, 0.16), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.12), transparent 38%),
-    linear-gradient(160deg, #f8fafc 0%, #f0f9ff 36%, #ecfeff 100%);
+    radial-gradient(circle at 8% 20%, rgba(255, 71, 19, 0.15), transparent 34%),
+    radial-gradient(circle at 90% 10%, rgba(17, 24, 28, 0.14), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(255, 71, 19, 0.08), transparent 38%),
+    linear-gradient(160deg, #f8fafc 0%, #f4f6f8 36%, #eef2f4 100%);
+  overflow-x: clip;
 }
 
 h1,
@@ -44,10 +47,11 @@ h6 {
 
 #root {
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid #0f172a;
+  outline: 3px solid var(--brand-primary);
   outline-offset: 2px;
 }
 
@@ -65,7 +69,7 @@ h6 {
 }
 
 .input:focus {
-  @apply border-slate-900;
+  border-color: var(--brand-primary);
 }
 
 .btn {
@@ -75,27 +79,31 @@ h6 {
 }
 
 .btn-primary {
-  @apply btn bg-slate-900 text-white;
+  @apply btn text-white;
+  background: var(--brand-primary);
 }
 
 .btn-primary:hover {
-  @apply bg-slate-800;
+  background: rgb(236, 62, 16);
 }
 
 .btn-primary:active {
-  @apply bg-black;
+  background: rgb(212, 54, 13);
 }
 
 .btn-secondary {
-  @apply btn border-2 border-slate-300 bg-white text-slate-900;
+  @apply btn border-2 bg-white text-slate-900;
+  border-color: rgba(17, 24, 28, 0.25);
 }
 
 .btn-secondary:hover {
-  @apply border-slate-500 bg-slate-50;
+  border-color: var(--brand-dark-80);
+  background: rgb(248, 250, 252);
 }
 
 .btn-link {
-  @apply inline-flex items-center text-sm font-bold text-slate-900 underline underline-offset-4;
+  @apply inline-flex items-center text-sm font-bold underline underline-offset-4;
+  color: var(--brand-primary);
 }
 
 .btn:disabled,
@@ -120,7 +128,8 @@ h6 {
 }
 
 .kicker {
-  @apply text-xs font-black uppercase tracking-[0.24em] text-slate-600;
+  @apply text-xs font-black uppercase tracking-[0.24em];
+  color: var(--brand-primary);
 }
 
 

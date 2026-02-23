@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ApplicantPage from './pages/ApplicantPage';
 import ReviewerPage from './pages/ReviewerPage';
+import AccountPage from './pages/AccountPage';
 import NotFoundPage from './pages/NotFoundPage';
 import FirebaseSetupPage from './pages/FirebaseSetupPage';
 import { getHomeRoute } from './utils/routes';
@@ -69,6 +70,10 @@ function App() {
 
         <Route element={<ProtectedRoute allowedRoles={['reviewer']} />}>
           <Route path="/reviewer" element={<ReviewerPage />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['applicant', 'reviewer']} />}>
+          <Route path="/account" element={<AccountPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

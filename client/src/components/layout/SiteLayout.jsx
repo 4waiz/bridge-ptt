@@ -1,7 +1,6 @@
 ﻿import { useMemo, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import useAuth from '../../context/useAuth';
-import { getHomeRoute } from '../../utils/routes';
 
 function SiteLayout() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -25,20 +24,20 @@ function SiteLayout() {
     ];
   }, [isAuthenticated, user]);
 
-  const accountPath = isAuthenticated && user ? getHomeRoute(user.role) : '/login';
+  const accountPath = isAuthenticated && user ? '/account' : '/login';
 
   const closeMenu = () => setMobileMenuOpen(false);
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-brandDark/15 bg-white/95 backdrop-blur">
         <div className="container flex items-center justify-between gap-3 py-3">
-          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={closeMenu}>
-            <img src="/bridge-logo.png" alt="BRIDGE logo" className="h-10 w-10 rounded-uiSm object-cover" />
-            <div className="min-w-0">
-              <p className="kicker truncate">BRIDGE</p>
-              <p className="truncate text-sm font-black text-slate-900">Edge Learning & Innovation Factory</p>
-            </div>
+          <Link to="/" className="flex shrink-0 items-center" onClick={closeMenu}>
+            <img
+              src="/bridge-logo.png"
+              alt="BRIDGE logo"
+              className="h-12 w-auto max-w-[180px] object-contain sm:h-14 sm:max-w-[240px] lg:h-16 lg:max-w-[320px]"
+            />
           </Link>
 
           <nav className="hidden items-center gap-2 md:flex">
@@ -47,7 +46,7 @@ function SiteLayout() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `btn ${isActive ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`
+                  `btn ${isActive ? 'bg-brandDark/80 text-white' : 'text-brandDark/80 hover:bg-brandDark/10'}`
                 }
               >
                 {item.label}
@@ -89,7 +88,7 @@ function SiteLayout() {
         </div>
 
         {mobileMenuOpen && (
-          <div id="mobile-nav" className="border-t border-slate-200 bg-white md:hidden">
+          <div id="mobile-nav" className="border-t border-brandDark/15 bg-white md:hidden">
             <div className="container space-y-3 py-4">
               <nav className="grid gap-2">
                 {navItems.map((item) => (
@@ -99,7 +98,9 @@ function SiteLayout() {
                     onClick={closeMenu}
                     className={({ isActive }) =>
                       `btn w-full justify-start ${
-                        isActive ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        isActive
+                          ? 'bg-brandDark/80 text-white'
+                          : 'bg-brandDark/5 text-brandDark/80 hover:bg-brandDark/10'
                       }`
                     }
                   >
@@ -145,10 +146,10 @@ function SiteLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-12 border-t border-slate-200 bg-slate-950 text-slate-100">
+      <footer className="mt-12 border-t border-brandDark/15 bg-brandDark/80 text-slate-100">
         <div className="container grid gap-6 py-8 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <p className="text-base font-black">BRIDGE Edge Learning & Innovation Factory</p>
+            <p className="text-base font-black">BRIDGE</p>
             <p className="mt-2 max-w-prose text-sm text-slate-300">
               Part-time recruiting portal for applicants and reviewer teams.
             </p>
@@ -156,7 +157,12 @@ function SiteLayout() {
 
           <div className="text-sm md:text-right">
             <p className="text-slate-300">Made by</p>
-            <a href="https://awaizahmed.com" target="_blank" rel="noreferrer" className="btn-link text-white">
+            <a
+              href="https://awaizahmed.com"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-flex text-lg font-bold text-slate-100 underline decoration-brandPrimary underline-offset-4 hover:text-brandPrimary focus-visible:text-brandPrimary"
+            >
               Awaiz Ahmed
             </a>
           </div>

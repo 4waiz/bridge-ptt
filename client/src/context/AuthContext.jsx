@@ -10,6 +10,10 @@ import AuthContext from './auth-context';
 import { auth, db, firebaseReady } from '../firebase';
 import { USER_ROLES } from '../utils/routes';
 
+function normalizeRole(role) {
+  return String(role).toLowerCase() === USER_ROLES.REVIEWER ? USER_ROLES.REVIEWER : USER_ROLES.APPLICANT;
+}
+
 function ensureFirebaseReady() {
   if (!firebaseReady || !auth || !db) {
     throw new Error('Firebase is not configured. Please set client/.env and restart Vite.');
@@ -24,20 +28,35 @@ async function ensureUserDoc(firebaseUser, preferredRole = USER_ROLES.APPLICANT,
 
   if (snapshot.exists()) {
     const data = snapshot.data();
+    const normalizedRole = normalizeRole(data.role);
+
+    if (normalizedRole !== data.role) {
+      await setDoc(
+        ref,
+        {
+          role: normalizedRole,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
     return {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       name: data.name || firebaseUser.displayName || preferredName || 'Bridge Member',
-      role: data.role || USER_ROLES.APPLICANT,
+      role: normalizedRole,
       profilePicUrl: data.profilePicUrl || '',
     };
   }
+
+  const normalizedPreferredRole = normalizeRole(preferredRole);
 
   const payload = {
     uid: firebaseUser.uid,
     email: firebaseUser.email,
     name: preferredName || firebaseUser.displayName || 'Bridge Member',
-    role: preferredRole,
+    role: normalizedPreferredRole,
     profilePicUrl: '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

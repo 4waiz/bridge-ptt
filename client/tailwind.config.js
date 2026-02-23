@@ -15,13 +15,9 @@ export default {
     },
     extend: {
       colors: {
-        brandInk: '#0c111d',
-        brandNavy: '#101a2d',
-        brandMist: '#ebf2ff',
-        brandSky: '#49b9ff',
-        brandAqua: '#2dd4bf',
-        brandRose: '#fb7185',
-        brandAmber: '#f59e0b',
+        brandPrimary: 'rgb(255 71 19 / <alpha-value>)',
+        brandDark: 'rgb(17 24 28 / <alpha-value>)',
+        brandLight: '#f7f8fa',
       },
       maxWidth: {
         app: '1200px',
