@@ -1,435 +1,389 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import api from '../api/http';
-import DashboardShell from '../components/layout/DashboardShell';
-import StatusBadge from '../components/ui/StatusBadge';
-import LoadingState from '../components/common/LoadingState';
-import { formatDate } from '../utils/format';
+﻿import { useCallback, useEffect, useState } from 'react';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import useAuth from '../context/useAuth';
+import { db, storage } from '../firebase';
 
-function buildInitialPreferred(criteria, existingSelections = []) {
-  const map = {};
+const STATUS_STYLE = {
+  submitted: 'bg-sky-100 text-sky-700',
+  reviewing: 'bg-amber-100 text-amber-700',
+  shortlisted: 'bg-emerald-100 text-emerald-700',
+  rejected: 'bg-rose-100 text-rose-700',
+  hired: 'bg-violet-100 text-violet-700',
+};
 
-  criteria.forEach((item) => {
-    map[item.id] = {
-      selected: false,
-      yearsExperience: 0,
-    };
-  });
+async function uploadFile(path, file) {
+  if (!file) {
+    return '';
+  }
 
-  existingSelections.forEach((item) => {
-    if (map[item.criteriaId]) {
-      map[item.criteriaId] = {
-        selected: true,
-        yearsExperience: Number(item.yearsExperience) || 0,
-      };
-    }
-  });
-
-  return map;
+  const fileRef = ref(storage, path);
+  await uploadBytes(fileRef, file);
+  return getDownloadURL(fileRef);
 }
 
 function ApplicantPage() {
-  const { user } = useAuth();
-
-  const [criteria, setCriteria] = useState({ mustHave: [], niceToHave: [] });
-  const [application, setApplication] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const { user, refreshUser } = useAuth();
 
   const [form, setForm] = useState({
     fullName: user?.name || '',
-    email: user?.email || '',
     phone: '',
     location: '',
-    experienceText: '',
+    availability: '',
+    whatYouOffer: '',
+    skills: '',
+    experience: '',
+    portfolio: '',
   });
-  const [mandatorySelections, setMandatorySelections] = useState([]);
-  const [preferredMap, setPreferredMap] = useState({});
-  const [cvFile, setCvFile] = useState(null);
 
-  const selectedPreferred = useMemo(
-    () =>
-      Object.entries(preferredMap)
-        .filter(([, value]) => value.selected)
-        .map(([criteriaId, value]) => ({
-          criteriaId: Number(criteriaId),
-          yearsExperience: Number(value.yearsExperience) || 0,
-        })),
-    [preferredMap],
-  );
+  const [application, setApplication] = useState(null);
+  const [profilePreview, setProfilePreview] = useState('');
+  const [profileFile, setProfileFile] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [certificateFiles, setCertificateFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
-  const loadData = useCallback(async () => {
+  const loadApplication = useCallback(async () => {
+    if (!user?.uid) {
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const [criteriaResponse, applicationResponse] = await Promise.all([
-        api.get('/applicant/criteria'),
-        api
-          .get('/applicant/application')
-          .then((res) => res)
-          .catch((requestError) => {
-            if (requestError.response?.status === 404) {
-              return { data: { application: null } };
-            }
-            throw requestError;
-          }),
-      ]);
+      const appRef = doc(db, 'applications', user.uid);
+      const appSnap = await getDoc(appRef);
 
-      const nextCriteria = criteriaResponse.data.criteria;
-      const nextApplication = applicationResponse.data.application;
-
-      setCriteria(nextCriteria);
-      setApplication(nextApplication);
-
-      if (nextApplication) {
-        setForm({
-          fullName: nextApplication.fullName,
-          email: nextApplication.email,
-          phone: nextApplication.phone,
-          location: nextApplication.location,
-          experienceText: nextApplication.experienceText,
-        });
-        setMandatorySelections(nextApplication.mandatorySelections || []);
-        setPreferredMap(
-          buildInitialPreferred(nextCriteria.niceToHave, nextApplication.preferredSelections || []),
-        );
-      } else {
+      if (!appSnap.exists()) {
+        setApplication(null);
         setForm((prev) => ({
           ...prev,
-          fullName: user?.name || prev.fullName,
-          email: user?.email || prev.email,
+          fullName: user.name || prev.fullName,
         }));
-        setMandatorySelections([]);
-        setPreferredMap(buildInitialPreferred(nextCriteria.niceToHave));
+        setProfilePreview(user.profilePicUrl || '');
+        return;
       }
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Failed to load applicant workspace');
+
+      const data = appSnap.data();
+      setApplication(data);
+      setForm({
+        fullName: data.fullName || user.name || '',
+        phone: data.phone || '',
+        location: data.location || '',
+        availability: data.availability || '',
+        whatYouOffer: data.whatYouOffer || '',
+        skills: data.skills || '',
+        experience: data.experience || '',
+        portfolio: data.portfolio || '',
+      });
+      setProfilePreview(data.profilePicUrl || user.profilePicUrl || '');
+    } catch {
+      setError('Could not load your application right now.');
     } finally {
       setLoading(false);
     }
-  }, [user?.name, user?.email]);
+  }, [user?.uid, user?.name, user?.profilePicUrl]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadApplication();
+  }, [loadApplication]);
 
-  const onMandatoryToggle = (criteriaId) => {
-    setMandatorySelections((prev) =>
-      prev.includes(criteriaId) ? prev.filter((id) => id !== criteriaId) : [...prev, criteriaId],
-    );
-  };
-
-  const onPreferredToggle = (criteriaId) => {
-    setPreferredMap((prev) => ({
-      ...prev,
-      [criteriaId]: {
-        ...prev[criteriaId],
-        selected: !prev[criteriaId]?.selected,
-      },
-    }));
-  };
-
-  const onPreferredYearsChange = (criteriaId, value) => {
-    setPreferredMap((prev) => ({
-      ...prev,
-      [criteriaId]: {
-        ...prev[criteriaId],
-        yearsExperience: value,
-      },
-    }));
-  };
-
-  const onSubmit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
+
+    if (!user?.uid) {
+      return;
+    }
+
+    setSaving(true);
     setMessage('');
     setError('');
 
     try {
-      const body = new FormData();
-      body.append('fullName', form.fullName);
-      body.append('email', form.email);
-      body.append('phone', form.phone);
-      body.append('location', form.location);
-      body.append('experienceText', form.experienceText);
-      body.append('mandatoryCriteria', JSON.stringify(mandatorySelections));
-      body.append('preferredCriteria', JSON.stringify(selectedPreferred));
+      const timestamp = Date.now();
 
-      if (cvFile) {
-        body.append('cv', cvFile);
+      const profilePicUrl = profileFile
+        ? await uploadFile(`profile-pictures/${user.uid}/${timestamp}-${profileFile.name}`, profileFile)
+        : application?.profilePicUrl || user.profilePicUrl || '';
+
+      const resumeUrl = resumeFile
+        ? await uploadFile(`resumes/${user.uid}/${timestamp}-${resumeFile.name}`, resumeFile)
+        : application?.resumeUrl || '';
+
+      let certificateUrls = application?.certificateUrls || [];
+      if (certificateFiles.length) {
+        const uploadedCertificates = [];
+        for (const file of certificateFiles) {
+          const url = await uploadFile(`certificates/${user.uid}/${timestamp}-${file.name}`, file);
+          uploadedCertificates.push({
+            name: file.name,
+            url,
+          });
+        }
+        certificateUrls = uploadedCertificates;
       }
 
-      const response = await api.post('/applicant/application', body, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+      const payload = {
+        userId: user.uid,
+        email: user.email,
+        fullName: form.fullName,
+        phone: form.phone,
+        location: form.location,
+        availability: form.availability,
+        whatYouOffer: form.whatYouOffer,
+        skills: form.skills,
+        experience: form.experience,
+        portfolio: form.portfolio,
+        profilePicUrl,
+        resumeUrl,
+        certificateUrls,
+        status: application?.status || 'submitted',
+        updatedAt: serverTimestamp(),
+        createdAt: application?.createdAt || serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'applications', user.uid), payload, { merge: true });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          uid: user.uid,
+          email: user.email,
+          name: form.fullName,
+          role: user.role,
+          profilePicUrl,
+          updatedAt: serverTimestamp(),
         },
-      });
+        { merge: true },
+      );
 
-      setMessage(response.data.message || 'Application saved');
-      setCvFile(null);
-      await loadData();
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Failed to submit application');
+      await refreshUser();
+      setProfileFile(null);
+      setResumeFile(null);
+      setCertificateFiles([]);
+      setMessage('Application saved successfully.');
+      await loadApplication();
+    } catch {
+      setError('Unable to save right now. Please try again.');
     } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openCv = async () => {
-    if (!application) {
-      return;
-    }
-
-    try {
-      const response = await api.get(`/applications/${application.id}/cv`, {
-        responseType: 'blob',
-      });
-
-      const url = URL.createObjectURL(response.data);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Unable to load CV file');
+      setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <DashboardShell title="Applicant Workspace" subtitle="Submit and track your application">
-        <LoadingState message="Loading your application..." />
-      </DashboardShell>
-    );
+    return <div className="rounded-3xl bg-white/80 p-8 text-center">Loading your application...</div>;
   }
 
   return (
-    <DashboardShell title="Applicant Workspace" subtitle="Submit and track your recruiting application">
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <section className="card-surface p-4 sm:p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Application Form</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Mandatory criteria control eligibility. Preferred criteria contribute weighted score.
-          </p>
+    <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <section className="card-playful p-6 sm:p-8">
+        <h1 className="text-3xl font-black text-slate-900">Part-Time Application</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Fill once, update anytime. Add your profile pic, resume, certificates, and what you offer.
+        </p>
 
-          <form className="mt-5 space-y-5" onSubmit={onSubmit}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="fullName">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  className="input"
-                  value={form.fullName}
-                  onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label" htmlFor="email">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  className="input"
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label" htmlFor="phone">
-                  Phone
-                </label>
-                <input
-                  id="phone"
-                  className="input"
-                  value={form.phone}
-                  onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label" htmlFor="location">
-                  Location
-                </label>
-                <input
-                  id="location"
-                  className="input"
-                  value={form.location}
-                  onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="label">Mandatory Criteria</p>
-              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                {criteria.mustHave.map((item) => (
-                  <label key={item.id} className="flex items-start gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={mandatorySelections.includes(item.id)}
-                      onChange={() => onMandatoryToggle(item.id)}
-                    />
-                    <span>{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="label">Preferred Criteria</p>
-              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                {criteria.niceToHave.map((item) => {
-                  const value = preferredMap[item.id] || { selected: false, yearsExperience: 0 };
-                  return (
-                    <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={value.selected}
-                          onChange={() => onPreferredToggle(item.id)}
-                        />
-                        <span>{item.label}</span>
-                        <span className="ml-auto text-xs text-slate-400">Weight: {item.weight}</span>
-                      </label>
-
-                      <div className="mt-2">
-                        <label className="label mb-1">Years Experience</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.5"
-                          className="input"
-                          value={value.yearsExperience}
-                          onChange={(event) => onPreferredYearsChange(item.id, event.target.value)}
-                          disabled={!value.selected}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label className="label" htmlFor="experienceText">
-                Experience Description
-              </label>
-              <textarea
-                id="experienceText"
-                rows={5}
+              <label className="label">Full Name</label>
+              <input
                 className="input"
-                value={form.experienceText}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    experienceText: event.target.value,
-                  }))
-                }
+                value={form.fullName}
+                onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
                 required
               />
             </div>
+            <div>
+              <label className="label">Email</label>
+              <input className="input" value={user?.email || ''} readOnly />
+            </div>
+            <div>
+              <label className="label">Phone</label>
+              <input
+                className="input"
+                value={form.phone}
+                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Location</label>
+              <input
+                className="input"
+                value={form.location}
+                onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Part-Time Availability</label>
+            <input
+              className="input"
+              placeholder="Example: 20 hours/week, evenings, weekends"
+              value={form.availability}
+              onChange={(event) => setForm((prev) => ({ ...prev, availability: event.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">What You Offer</label>
+            <textarea
+              className="input"
+              rows={4}
+              placeholder="Tell BRIDGE what value you bring."
+              value={form.whatYouOffer}
+              onChange={(event) => setForm((prev) => ({ ...prev, whatYouOffer: event.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Skills / Tools</label>
+            <input
+              className="input"
+              placeholder="React, Figma, Content Writing, Data Analysis..."
+              value={form.skills}
+              onChange={(event) => setForm((prev) => ({ ...prev, skills: event.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Experience Summary</label>
+            <textarea
+              className="input"
+              rows={4}
+              value={form.experience}
+              onChange={(event) => setForm((prev) => ({ ...prev, experience: event.target.value }))}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Portfolio / LinkedIn (optional)</label>
+            <input
+              className="input"
+              placeholder="https://..."
+              value={form.portfolio}
+              onChange={(event) => setForm((prev) => ({ ...prev, portfolio: event.target.value }))}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Profile Picture</label>
+              <input
+                className="input"
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setProfileFile(file);
+                  if (file) {
+                    setProfilePreview(URL.createObjectURL(file));
+                  }
+                }}
+              />
+            </div>
 
             <div>
-              <label className="label" htmlFor="cv">
-                CV Upload (PDF/DOC/DOCX)
-              </label>
+              <label className="label">Resume (PDF/DOC)</label>
               <input
-                id="cv"
+                className="input"
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={(event) => setCvFile(event.target.files?.[0] || null)}
-                className="input"
+                onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
               />
-              <p className="mt-1 text-xs text-slate-500">
-                {application ? 'Leave empty to keep your current CV.' : 'CV is required for first submission.'}
-              </p>
             </div>
+          </div>
 
-            {message && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>}
-            {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+          <div>
+            <label className="label">Certificates (multiple)</label>
+            <input
+              className="input"
+              type="file"
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={(event) => setCertificateFiles(Array.from(event.target.files || []))}
+            />
+          </div>
 
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Submitting...' : application ? 'Update Application' : 'Submit Application'}
-            </button>
-          </form>
+          {message && <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-700">{message}</p>}
+          {error && <p className="rounded-xl bg-rose-100 px-3 py-2 text-sm text-rose-700">{error}</p>}
+
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Application'}
+          </button>
+        </form>
+      </section>
+
+      <aside className="space-y-4">
+        <section className="card-playful p-6">
+          <h2 className="text-xl font-black text-slate-900">Your Profile</h2>
+          <div className="mt-4 flex items-center gap-3">
+            <img
+              src={profilePreview || '/bridge-logo.png'}
+              alt="Profile"
+              className="h-20 w-20 rounded-full border-4 border-white object-cover shadow"
+            />
+            <div>
+              <p className="font-bold text-slate-900">{form.fullName || 'Your name'}</p>
+              <p className="text-sm text-slate-600">{user?.email}</p>
+            </div>
+          </div>
         </section>
 
-        <aside className="space-y-4">
-          <section className="card-surface p-4">
-            <h3 className="text-base font-semibold text-slate-900">Application Status</h3>
-            {!application && <p className="mt-2 text-sm text-slate-500">No application submitted yet.</p>}
-            {application && (
-              <div className="mt-3 space-y-3 text-sm text-slate-700">
-                <div className="flex items-center justify-between">
-                  <span>Status</span>
-                  <StatusBadge status={application.status} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Computed Score</span>
-                  <strong>{application.score}</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Mandatory Match</span>
-                  <strong>{application.mandatoryMet ? 'Yes' : 'No'}</strong>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Submitted</span>
-                  <strong>{formatDate(application.createdAt)}</strong>
-                </div>
-                <button type="button" className="btn-secondary w-full" onClick={openCv}>
-                  View CV
-                </button>
-              </div>
-            )}
-          </section>
+        <section className="card-playful p-6">
+          <h2 className="text-xl font-black text-slate-900">Application Status</h2>
+          <div className="mt-3">
+            <span
+              className={`inline-flex rounded-full px-3 py-1 text-sm font-bold ${
+                STATUS_STYLE[application?.status || 'submitted'] || 'bg-slate-100 text-slate-700'
+              }`}
+            >
+              {(application?.status || 'submitted').toUpperCase()}
+            </span>
+          </div>
+          <p className="mt-3 text-sm text-slate-600">
+            Resume: {application?.resumeUrl ? 'Uploaded' : 'Not uploaded yet'}
+          </p>
+          {application?.resumeUrl && (
+            <a
+              href={application.resumeUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex text-sm font-bold text-slate-900 underline"
+            >
+              View Resume
+            </a>
+          )}
 
-          <section className="card-surface p-4">
-            <h3 className="text-base font-semibold text-slate-900">Timeline</h3>
-            <div className="mt-3 space-y-3">
-              {application?.events?.length ? (
-                application.events.map((event) => (
-                  <div key={event.id} className="rounded-xl border border-slate-200 p-3">
-                    <p className="text-sm font-medium text-slate-800">{event.action}</p>
-                    <p className="mt-1 text-xs text-slate-500">{formatDate(event.createdAt)}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No timeline events yet.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="card-surface p-4">
-            <h3 className="text-base font-semibold text-slate-900">Reviewer Notes</h3>
-            <div className="mt-3 space-y-3">
-              {application?.notes?.length ? (
-                application.notes.map((note) => (
-                  <div key={note.id} className="rounded-xl border border-slate-200 p-3">
-                    <p className="text-sm text-slate-700">{note.content}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {note.reviewer?.name || 'Reviewer'} • {formatDate(note.createdAt)}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No reviewer notes yet.</p>
-              )}
-            </div>
-          </section>
-        </aside>
-      </div>
-    </DashboardShell>
+          <p className="mt-4 text-sm text-slate-600">
+            Certificates: {application?.certificateUrls?.length || 0}
+          </p>
+          <div className="mt-2 space-y-1">
+            {(application?.certificateUrls || []).map((cert) => (
+              <a
+                key={cert.url}
+                href={cert.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-xs font-semibold text-slate-700 underline"
+              >
+                {cert.name}
+              </a>
+            ))}
+          </div>
+        </section>
+      </aside>
+    </div>
   );
 }
 
 export default ApplicantPage;
-
-

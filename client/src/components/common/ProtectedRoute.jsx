@@ -1,13 +1,12 @@
 ﻿import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '../../context/useAuth';
-import LoadingState from './LoadingState';
 import { getHomeRoute } from '../../utils/routes';
 
 function ProtectedRoute({ allowedRoles }) {
   const { loading, isAuthenticated, user } = useAuth();
 
   if (loading) {
-    return <LoadingState message="Checking session..." />;
+    return <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-600">Loading...</div>;
   }
 
   if (!isAuthenticated || !user) {
@@ -22,4 +21,3 @@ function ProtectedRoute({ allowedRoles }) {
 }
 
 export default ProtectedRoute;
-

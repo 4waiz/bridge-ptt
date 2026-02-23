@@ -7,92 +7,75 @@ function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (event) => {
-    setForm((prev) => ({
-      ...prev,
-      [event.target.name]: event.target.value,
-    }));
-  };
+  const [error, setError] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
     try {
-      const user = await login(form);
-      navigate(getHomeRoute(user.role), { replace: true });
-    } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Login failed');
+      const profile = await login({ email, password });
+      navigate(getHomeRoute(profile.role), { replace: true });
+    } catch {
+      setError('Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-xl items-center px-4 py-8">
-      <div className="card-surface w-full p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recruiting Campaign Tool</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">Sign In</h1>
-        <p className="mt-2 text-sm text-slate-600">Access applicant, reviewer, or admin workspace.</p>
+    <section className="card-surface mx-auto max-w-xl p-6 sm:p-8">
+      <h1 className="text-3xl font-black text-slate-900">Welcome Back</h1>
+      <p className="mt-2 text-sm text-slate-700">Sign in to continue with BRIDGE hiring portal.</p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="label">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              className="input"
-              value={form.email}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="label">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="input"
-              value={form.password}
-              onChange={handleChange}
-            />
-          </div>
-
-          {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-          <p>Seeded admin: admin@system.com / 1234</p>
-          <p>Seeded reviewer: reviewer@system.com / 1234</p>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <div>
+          <label className="label" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="input"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
         </div>
 
-        <p className="mt-4 text-sm text-slate-500">
-          New applicant?{' '}
-          <Link to="/register" className="font-semibold text-slate-900 underline">
-            Create account
-          </Link>
-        </p>
-      </div>
-    </div>
+        <div>
+          <label className="label" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            className="input"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </div>
+
+        {error && <p className="rounded-uiSm bg-rose-100 px-4 py-3 text-sm text-rose-700">{error}</p>}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full" aria-busy={loading}>
+          {loading ? 'Signing In...' : 'Sign In'}
+        </button>
+      </form>
+
+      <p className="mt-6 text-sm text-slate-700">
+        New here?{' '}
+        <Link to="/register" className="btn-link">
+          Create account
+        </Link>
+      </p>
+    </section>
   );
 }
 
 export default LoginPage;
-

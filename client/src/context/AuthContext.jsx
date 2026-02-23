@@ -1,93 +1,132 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
-import api from '../api/http';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import AuthContext from './auth-context';
+import { auth, db, firebaseReady } from '../firebase';
+import { USER_ROLES } from '../utils/routes';
 
-function getStoredUser() {
-  const raw = localStorage.getItem('rct_user');
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
+function ensureFirebaseReady() {
+  if (!firebaseReady || !auth || !db) {
+    throw new Error('Firebase is not configured. Please set client/.env and restart Vite.');
   }
 }
 
+async function ensureUserDoc(firebaseUser, preferredRole = USER_ROLES.APPLICANT, preferredName = '') {
+  ensureFirebaseReady();
+
+  const ref = doc(db, 'users', firebaseUser.uid);
+  const snapshot = await getDoc(ref);
+
+  if (snapshot.exists()) {
+    const data = snapshot.data();
+    return {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      name: data.name || firebaseUser.displayName || preferredName || 'Bridge Member',
+      role: data.role || USER_ROLES.APPLICANT,
+      profilePicUrl: data.profilePicUrl || '',
+    };
+  }
+
+  const payload = {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    name: preferredName || firebaseUser.displayName || 'Bridge Member',
+    role: preferredRole,
+    profilePicUrl: '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(ref, payload, { merge: true });
+
+  return {
+    uid: payload.uid,
+    email: payload.email,
+    name: payload.name,
+    role: payload.role,
+    profilePicUrl: '',
+  };
+}
+
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('rct_token') || '');
-  const [user, setUser] = useState(() => getStoredUser());
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const persistAuth = useCallback((nextToken, nextUser) => {
-    setToken(nextToken);
-    setUser(nextUser);
-    localStorage.setItem('rct_token', nextToken);
-    localStorage.setItem('rct_user', JSON.stringify(nextUser));
-  }, []);
-
-  const clearAuth = useCallback(() => {
-    setToken('');
-    setUser(null);
-    localStorage.removeItem('rct_token');
-    localStorage.removeItem('rct_user');
-  }, []);
-
-  const refreshUser = useCallback(async () => {
-    if (!token) {
+  const refreshUser = useCallback(async (firebaseUser) => {
+    if (!firebaseUser) {
       setUser(null);
-      setLoading(false);
       return;
     }
 
-    try {
-      const { data } = await api.get('/auth/me');
-      persistAuth(token, data.user);
-    } catch {
-      clearAuth();
-    } finally {
-      setLoading(false);
-    }
-  }, [token, persistAuth, clearAuth]);
+    const profile = await ensureUserDoc(firebaseUser);
+    setUser(profile);
+  }, []);
 
   useEffect(() => {
-    refreshUser();
+    if (!firebaseReady || !auth) {
+      setLoading(false);
+      return () => {};
+    }
+
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        await refreshUser(firebaseUser);
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsub();
   }, [refreshUser]);
 
-  const login = useCallback(
-    async ({ email, password }) => {
-      const { data } = await api.post('/auth/login', { email, password });
-      persistAuth(data.token, data.user);
-      return data.user;
-    },
-    [persistAuth],
-  );
+  const register = useCallback(async ({ name, email, password, role }) => {
+    ensureFirebaseReady();
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const profile = await ensureUserDoc(result.user, role, name);
+    setUser(profile);
+    return profile;
+  }, []);
 
-  const register = useCallback(
-    async ({ name, email, password }) => {
-      const { data } = await api.post('/auth/register', { name, email, password });
-      persistAuth(data.token, data.user);
-      return data.user;
-    },
-    [persistAuth],
-  );
+  const login = useCallback(async ({ email, password }) => {
+    ensureFirebaseReady();
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    const profile = await ensureUserDoc(result.user);
+    setUser(profile);
+    return profile;
+  }, []);
 
-  const logout = useCallback(() => {
-    clearAuth();
-  }, [clearAuth]);
+  const logout = useCallback(async () => {
+    if (!firebaseReady || !auth) {
+      setUser(null);
+      return;
+    }
+
+    await signOut(auth);
+    setUser(null);
+  }, []);
 
   const value = {
-    token,
     user,
-    isAuthenticated: Boolean(token && user),
     loading,
-    login,
+    isAuthenticated: Boolean(user),
     register,
+    login,
     logout,
-    refreshUser,
+    refreshUser: async () => {
+      if (!firebaseReady || !auth) {
+        return;
+      }
+      await refreshUser(auth.currentUser);
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

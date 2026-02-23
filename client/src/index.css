@@ -1,11 +1,18 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
 }
 
 * {
@@ -15,12 +22,13 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'IBM Plex Sans', sans-serif;
-  color: #0b1220;
+  font-family: 'Nunito', sans-serif;
+  color: #0f172a;
   background:
-    radial-gradient(circle at 5% 10%, rgba(45, 212, 191, 0.22), transparent 28%),
-    radial-gradient(circle at 96% 16%, rgba(73, 185, 255, 0.2), transparent 24%),
-    linear-gradient(180deg, #f7fbff 0%, #eef6ff 40%, #f9fcff 100%);
+    radial-gradient(circle at 8% 20%, rgba(251, 113, 133, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(45, 212, 191, 0.16), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.12), transparent 38%),
+    linear-gradient(160deg, #f8fafc 0%, #f0f9ff 36%, #ecfeff 100%);
 }
 
 h1,
@@ -29,35 +37,90 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: 'Sora', sans-serif;
   margin: 0;
+  font-family: 'Baloo 2', cursive;
+  letter-spacing: -0.01em;
 }
 
 #root {
   min-height: 100vh;
 }
 
-.card-surface {
-  @apply rounded-2xl border border-slate-200 bg-white/90 shadow-glow backdrop-blur;
-}
-
-.input {
-  @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100;
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #0f172a;
+  outline-offset: 2px;
 }
 
 .label {
-  @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  @apply mb-1 block text-xs font-black uppercase tracking-[0.12em] text-slate-700;
+}
+
+.input {
+  @apply w-full rounded-uiSm border-2 border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition;
+  min-height: 44px;
+}
+
+.input:hover {
+  @apply border-slate-400;
+}
+
+.input:focus {
+  @apply border-slate-900;
 }
 
 .btn {
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition;
+  @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold transition;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .btn-primary {
-  @apply btn bg-slate-900 text-white hover:bg-slate-800;
+  @apply btn bg-slate-900 text-white;
+}
+
+.btn-primary:hover {
+  @apply bg-slate-800;
+}
+
+.btn-primary:active {
+  @apply bg-black;
 }
 
 .btn-secondary {
-  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
+  @apply btn border-2 border-slate-300 bg-white text-slate-900;
 }
+
+.btn-secondary:hover {
+  @apply border-slate-500 bg-slate-50;
+}
+
+.btn-link {
+  @apply inline-flex items-center text-sm font-bold text-slate-900 underline underline-offset-4;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.card-surface {
+  @apply rounded-uiLg border border-white/70 bg-white shadow-ui;
+}
+
+.card-playful {
+  @apply rounded-uiLg border border-white/70 bg-white shadow-ui;
+}
+
+.card-elevated {
+  @apply rounded-uiLg border border-white/70 bg-white shadow-uiLg;
+}
+
+.section-stack {
+  @apply space-y-8;
+}
+
+.kicker {
+  @apply text-xs font-black uppercase tracking-[0.24em] text-slate-600;
+}
+
 

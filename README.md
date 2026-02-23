@@ -1,150 +1,111 @@
-# Recruiting Campaign Tool MVP
+﻿# BRIDGE Part-Time Recruiting Portal
 
-Full-stack recruiting workflow app with role-based access for applicants, reviewers, and admins.
+Playful and simple web app for **BRIDGE Edge Learning and Innovation Factory**.
 
-## Tech Stack
+Two user types:
 
-- Frontend: React (Vite) + TailwindCSS
-- Backend: Node.js + Express
-- Database: SQLite via Prisma ORM
-- Authentication: JWT-based session flow
-- Repository layout: `client/` + `server/`
+- **Applicant**: looking for part-time opportunities, submits profile, resume, certificates, and what they offer.
+- **Reviewer**: BRIDGE team member reviewing applications and updating statuses.
 
-## Features Implemented
+## What was updated
 
-### Authentication + RBAC
+- Frontend redesigned to be more playful and easy to use.
+- Added global **header + footer**.
+- Added fixed, large **BRIDGE logo** at bottom-left (from `server/logo.png`).
+- Footer includes:
+  - page links
+  - **Made by Awaiz Ahmed** with hyperlink to `https://awaizahmed.com`
+- Migrated app data/auth/files to **Firebase**:
+  - Firebase Auth (email/password)
+  - Firestore (users + applications)
+  - Firebase Storage (profile pictures, resumes, certificates)
+- Added **profile picture** option in applicant form.
 
-- Email/password login
-- Applicant self-registration
-- Hashed passwords (`bcryptjs`)
-- Role-based protected APIs and routes (`applicant`, `reviewer`, `admin`)
-- Seeded admin account: `admin@system.com / 1234`
+## Stack
 
-### Applicant
-
-- Submit application form:
-  - Personal information
-  - Mandatory criteria checklist
-  - Preferred criteria + years of experience
-  - Experience description
-  - CV upload (PDF/DOC/DOCX)
-- Auto-rejection when mandatory criteria are not fully matched
-- Weighted preferred-score calculation from admin-defined criteria
-- Status, timeline, and reviewer note visibility
-
-### Reviewer
-
-- ATS-style reviewer board with:
-  - Left applicant queue
-  - Filters by status, score, mandatory criteria match
-  - Sorting controls
-- Applicant detail workspace:
-  - Profile tab
-  - Interviews tab
-  - Timeline tab
-  - Analytics tab
-  - Resume preview
-  - Notes management
-- Score applicants by category (1-5)
-- Move applicants through pipeline statuses
-
-### Admin
-
-- Dashboard stats cards:
-  - total applicants
-  - shortlisted
-  - rejected
-  - interviews scheduled
-  - reviewer count
-- Manage criteria:
-  - must-have
-  - nice-to-have with weight
-- Dynamically edit scoring weights
-- Create reviewer users
-- Audit log of application events/status changes
-
-### Security
-
-- Input validation (`zod`)
-- Route-level role protection middleware
-- Authorization checks for CV access
-- Upload type + size restrictions
-
-## Project Structure
-
-```text
-bridge-ptt/
-  client/   # React + Tailwind frontend
-  server/   # Express API + Prisma + SQLite
-```
+- React + Vite + TailwindCSS
+- Firebase (Auth + Firestore + Storage)
 
 ## Setup
 
-### 1. Install dependencies
+1. Install dependencies:
 
 ```bash
 npm run setup
 ```
 
-### 2. Configure environment files
+2. Create Firebase project and enable:
+- Authentication -> Email/Password
+- Firestore Database
+- Storage
 
-Server:
-
-```bash
-cp server/.env.example server/.env
-```
-
-Client (optional, defaults to local API URL):
+3. Configure env:
 
 ```bash
 cp client/.env.example client/.env
 ```
 
-### 3. Initialize database
+Fill `client/.env` with Firebase config values:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+4. Run frontend:
 
 ```bash
-npm run db:push --prefix server
-npm run db:seed --prefix server
+npm run dev:client
 ```
 
-### 4. Run development mode (both apps)
+App URL: `http://localhost:5173`
 
-```bash
-npm run dev
+## Firestore collections used
+
+- `users/{uid}`
+  - `uid, email, name, role, profilePicUrl`
+- `applications/{uid}`
+  - `fullName, email, phone, location, availability, whatYouOffer, skills, experience, portfolio`
+  - `profilePicUrl, resumeUrl, certificateUrls[]`
+  - `status, reviewerNote, createdAt, updatedAt`
+
+## Recommended Firebase security rules (starter)
+
+### Firestore rules
+
+```txt
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /applications/{userId} {
+      allow create, read, update: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'reviewer';
+    }
+  }
+}
 ```
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:4000`
+### Storage rules
 
-## Seeded Accounts
-
-- Admin: `admin@system.com / 1234`
-- Reviewer: `reviewer@system.com / 1234`
-- Applicants:
-  - `alex@applicant.com / 1234`
-  - `bianca@applicant.com / 1234`
-  - `carlos@applicant.com / 1234`
-
-## Scripts
-
-Root:
-
-- `npm run dev` - Run client + server concurrently
-- `npm run dev:client` - Run frontend only
-- `npm run dev:server` - Run backend only
-- `npm run build` - Build frontend
-- `npm run seed` - Run Prisma seed in server
-
-Server:
-
-- `npm run dev` - Start API with nodemon
-- `npm run start` - Start API
-- `npm run db:push` - Sync Prisma schema to SQLite
-- `npm run db:seed` - Seed database
-- `npm run prisma:generate` - Generate Prisma client
+```txt
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
 
 ## Notes
 
-- SQLite DB file is managed under `server/prisma/dev.db`.
-- Uploaded CV files are stored in `server/uploads`.
-- For production, update `JWT_SECRET` and tighten CORS origins.
+- The previous Express + Prisma backend remains in the repo but this UI now uses Firebase directly.
+- Reviewer accounts can be created from the Register page by selecting "BRIDGE reviewer/team member".
