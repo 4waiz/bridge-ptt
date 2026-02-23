@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api/http';
 import DashboardShell from '../components/layout/DashboardShell';
 import StatusBadge from '../components/ui/StatusBadge';
 import LoadingState from '../components/common/LoadingState';
 import { formatDate } from '../utils/format';
-import useAuth from '/useAuth';
+import useAuth from '../context/useAuth';
 
 function buildInitialPreferred(criteria, existingSelections = []) {
   const map = {};
@@ -60,7 +60,7 @@ function ApplicantPage() {
     [preferredMap],
   );
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -110,11 +110,11 @@ function ApplicantPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.name, user?.email]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const onMandatoryToggle = (criteriaId) => {
     setMandatorySelections((prev) =>
@@ -415,7 +415,7 @@ function ApplicantPage() {
                   <div key={note.id} className="rounded-xl border border-slate-200 p-3">
                     <p className="text-sm text-slate-700">{note.content}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {note.reviewer?.name || 'Reviewer'} � {formatDate(note.createdAt)}
+                      {note.reviewer?.name || 'Reviewer'} • {formatDate(note.createdAt)}
                     </p>
                   </div>
                 ))
@@ -431,3 +431,5 @@ function ApplicantPage() {
 }
 
 export default ApplicantPage;
+
+

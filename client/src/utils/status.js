@@ -1,4 +1,4 @@
-export const STATUS_OPTIONS = [
+﻿export const STATUS_OPTIONS = [
   'APPLIED',
   'REJECTED',
   'SHORTLISTED',
@@ -21,3 +21,4 @@ export const STATUS_CLASSES = {
   INTERVIEW_SCHEDULED: 'bg-amber-100 text-amber-700 border-amber-200',
   HIRED: 'bg-violet-100 text-violet-700 border-violet-200',
 };
+

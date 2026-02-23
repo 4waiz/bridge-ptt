@@ -1,4 +1,4 @@
-import clsx from 'clsx';
+﻿import clsx from 'clsx';
 
 function Tabs({ tabs, activeTab, onChange }) {
   return (
@@ -23,3 +23,4 @@ function Tabs({ tabs, activeTab, onChange }) {
 }
 
 export default Tabs;
+

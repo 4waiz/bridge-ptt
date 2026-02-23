@@ -1,4 +1,4 @@
-import clsx from 'clsx';
+﻿import clsx from 'clsx';
 import { STATUS_CLASSES, STATUS_LABELS } from '../../utils/status';
 
 function StatusBadge({ status, className = '' }) {
@@ -16,3 +16,4 @@ function StatusBadge({ status, className = '' }) {
 }
 
 export default StatusBadge;
+

@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+﻿import { useContext } from 'react';
 import AuthContext from './auth-context';
 
 function useAuth() {
@@ -11,3 +11,4 @@ function useAuth() {
 }
 
 export default useAuth;
+

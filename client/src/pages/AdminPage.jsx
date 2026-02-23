@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../api/http';
 import DashboardShell from '../components/layout/DashboardShell';
 import LoadingState from '../components/common/LoadingState';
@@ -393,7 +393,7 @@ function AdminPage() {
                   App #{log.application?.id} {log.application?.fullName ? `(${log.application.fullName})` : ''}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Actor: {log.actor?.name || 'System'} � {formatDate(log.createdAt)}
+                  Actor: {log.actor?.name || 'System'} • {formatDate(log.createdAt)}
                 </p>
               </div>
             ))}
@@ -405,3 +405,4 @@ function AdminPage() {
 }
 
 export default AdminPage;
+

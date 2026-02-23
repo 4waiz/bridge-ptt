@@ -1,4 +1,4 @@
-export function getHomeRoute(role) {
+﻿export function getHomeRoute(role) {
   if (role === 'admin') {
     return '/admin';
   }
@@ -9,3 +9,4 @@ export function getHomeRoute(role) {
 
   return '/applicant';
 }
+

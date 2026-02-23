@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+ï»¿import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api/http';
 import DashboardShell from '../components/layout/DashboardShell';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -6,7 +6,7 @@ import Tabs from '../components/ui/Tabs';
 import LoadingState from '../components/common/LoadingState';
 import { STATUS_LABELS, STATUS_OPTIONS } from '../utils/status';
 import { formatDate } from '../utils/format';
-import useAuth from '/useAuth';
+import useAuth from '../context/useAuth';
 
 const REVIEWER_TABS = [
   { value: 'profile', label: 'Profile' },
@@ -55,7 +55,7 @@ function ReviewerPage() {
     return selectedApplication.scores.filter((score) => score.reviewerId === user.id);
   }, [selectedApplication, user?.id]);
 
-  const loadApplications = async () => {
+  const loadApplications = useCallback(async () => {
     setLoadingList(true);
     setError('');
 
@@ -95,9 +95,9 @@ function ReviewerPage() {
     } finally {
       setLoadingList(false);
     }
-  };
+  }, [filters, selectedApplicationId]);
 
-  const loadApplicationDetail = async (applicationId) => {
+  const loadApplicationDetail = useCallback(async (applicationId) => {
     if (!applicationId) {
       return;
     }
@@ -113,9 +113,9 @@ function ReviewerPage() {
     } finally {
       setLoadingDetail(false);
     }
-  };
+  }, []);
 
-  const loadResume = async (applicationId) => {
+  const loadResume = useCallback(async (applicationId) => {
     if (!applicationId) {
       return;
     }
@@ -146,16 +146,16 @@ function ReviewerPage() {
     } finally {
       setLoadingResume(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadApplications();
-  }, [filters]);
+  }, [loadApplications]);
 
   useEffect(() => {
     loadApplicationDetail(selectedApplicationId);
     loadResume(selectedApplicationId);
-  }, [selectedApplicationId]);
+  }, [selectedApplicationId, loadApplicationDetail, loadResume]);
 
   useEffect(() => {
     if (!selectedApplication) {
@@ -181,13 +181,13 @@ function ReviewerPage() {
     [resumeUrl],
   );
 
-  const refreshSelected = async () => {
+  const refreshSelected = useCallback(async () => {
     await loadApplications();
     if (selectedApplicationId) {
       await loadApplicationDetail(selectedApplicationId);
       await loadResume(selectedApplicationId);
     }
-  };
+  }, [loadApplications, selectedApplicationId, loadApplicationDetail, loadResume]);
 
   const saveScores = async () => {
     if (!selectedApplicationId) {
@@ -359,7 +359,7 @@ function ReviewerPage() {
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">{selectedApplication.fullName}</h3>
                   <p className="text-sm text-slate-500">
-                    {selectedApplication.email} • {selectedApplication.location}
+                    {selectedApplication.email} â€¢ {selectedApplication.location}
                   </p>
                 </div>
                 <StatusBadge status={selectedApplication.status} className="ml-auto" />
@@ -411,7 +411,7 @@ function ReviewerPage() {
                               <div key={note.id} className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
                                 <p>{note.content}</p>
                                 <p className="mt-1 text-xs text-slate-500">
-                                  {note.reviewer?.name || 'Reviewer'} • {formatDate(note.createdAt)}
+                                  {note.reviewer?.name || 'Reviewer'} â€¢ {formatDate(note.createdAt)}
                                 </p>
                               </div>
                             ))
@@ -512,7 +512,7 @@ function ReviewerPage() {
                         <div key={event.id} className="rounded-xl border border-slate-200 p-3">
                           <p className="text-sm text-slate-800">{event.action}</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {event.actor?.name || 'System'} • {formatDate(event.createdAt)}
+                            {event.actor?.name || 'System'} â€¢ {formatDate(event.createdAt)}
                           </p>
                         </div>
                       ))
@@ -609,3 +609,5 @@ function ReviewerPage() {
 }
 
 export default ReviewerPage;
+
+

@@ -1,4 +1,4 @@
-export function formatDate(value) {
+﻿export function formatDate(value) {
   if (!value) {
     return '-';
   }
@@ -20,3 +20,4 @@ export function formatDate(value) {
 export function toApiStatusLabel(status) {
   return status ? status.replaceAll('_', ' ') : '';
 }
+

@@ -1,6 +1,6 @@
-import { NavLink } from 'react-router-dom';
+﻿import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
-import useAuth from '/useAuth';
+import useAuth from '../../context/useAuth';
 
 const navigationByRole = {
   applicant: [{ to: '/applicant', label: 'Application' }],
@@ -66,3 +66,4 @@ function DashboardShell({ title, subtitle, children }) {
 }
 
 export default DashboardShell;
+

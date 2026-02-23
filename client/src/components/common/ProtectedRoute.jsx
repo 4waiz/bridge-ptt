@@ -1,5 +1,5 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import useAuth from '/useAuth';
+﻿import { Navigate, Outlet } from 'react-router-dom';
+import useAuth from '../../context/useAuth';
 import LoadingState from './LoadingState';
 import { getHomeRoute } from '../../utils/routes';
 
@@ -22,3 +22,4 @@ function ProtectedRoute({ allowedRoles }) {
 }
 
 export default ProtectedRoute;
+
