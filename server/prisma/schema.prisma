@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("APPLICANT")
+  createdAt     DateTime  @default(now())
+  application   Application?
+  reviewedScores Score[]  @relation("ReviewerScores")
+  notes         Note[]    @relation("ReviewerNotes")
+  events        EventLog[] @relation("ActorEvents")
+}
+
+model Application {
+  id                  Int               @id @default(autoincrement())
+  userId              Int               @unique
+  status              String            @default("APPLIED")
+  score               Float             @default(0)
+  experienceText      String
+  cvPath              String
+  fullName            String
+  email               String
+  phone               String
+  location            String
+  mandatoryMet        Boolean           @default(true)
+  mandatorySelections String
+  preferredSelections String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores Score[]
+  notes  Note[]
+  events EventLog[]
+}
+
+model Criteria {
+  id        Int          @id @default(autoincrement())
+  type      String
+  label     String
+  weight    Float?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([type, label])
+}
+
+model Score {
+  id            Int         @id @default(autoincrement())
+  applicationId Int
+  reviewerId    Int
+  category      String
+  value         Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer    User        @relation("ReviewerScores", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, reviewerId, category])
+}
+
+model Note {
+  id            Int       @id @default(autoincrement())
+  applicationId Int
+  reviewerId    Int
+  content       String
+  createdAt     DateTime  @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer    User        @relation("ReviewerNotes", fields: [reviewerId], references: [id], onDelete: Cascade)
+}
+
+model EventLog {
+  id            Int       @id @default(autoincrement())
+  applicationId Int
+  action        String
+  actorId       Int?
+  createdAt     DateTime  @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("ActorEvents", fields: [actorId], references: [id], onDelete: SetNull)
+}
